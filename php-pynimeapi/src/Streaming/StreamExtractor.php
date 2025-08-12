@@ -1,0 +1,93 @@
+<?php
+
+namespace PyNime\Streaming;
+
+use GuzzleHttp\Client;
+use DiDom\Document;
+
+class StreamExtractor
+{
+    private Client $client;
+
+    public function __construct()
+    {
+        $this->client = new Client();
+    }
+
+    private function getEmbedUrl(string $episode_url): string
+    {
+        $response = $this->client->get($episode_url);
+        $html = $response->getBody()->getContents();
+        $document = new Document($html);
+        $iframe = $document->first('iframe');
+        return $iframe->getAttribute('src');
+    }
+
+    private function getQuality(?string $label): ?int
+    {
+        if (!$label) {
+            return null;
+        }
+        preg_match('/(\d+) P/', $label, $matches);
+        return $matches[1] ? (int)$matches[1] : null;
+    }
+
+    private function aesDecrypt(string $data, string $key, string $iv): string
+    {
+        $decrypted = openssl_decrypt(base64_decode($data), 'aes-256-cbc', $key, OPENSSL_RAW_DATA, $iv);
+        return rtrim($decrypted, "\x00\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0b\x0c\r\x0e\x0f\x10");
+    }
+
+    private function aesEncrypt(string $data, string $key, string $iv): string
+    {
+        $padded_data = $data . str_repeat(chr(16 - strlen($data) % 16), 16 - strlen($data) % 16);
+        $encrypted = openssl_encrypt($padded_data, 'aes-256-cbc', $key, OPENSSL_RAW_DATA, $iv);
+        return base64_encode($encrypted);
+    }
+
+
+    public function extract(string $url): ?string
+    {
+        try {
+            $url = $this->getEmbedUrl($url);
+            $parsed_url = parse_url($url);
+            parse_str($parsed_url['query'], $query_params);
+            $content_id = $query_params['id'];
+            $next_host = "{$parsed_url['scheme']}://{$parsed_url['host']}/";
+
+            $streaming_page = $this->client->get($url)->getBody()->getContents();
+
+            preg_match_all('/(?:container|videocontent)-(\d+)/', $streaming_page, $key_matches);
+            [$encryption_key, $iv, $decryption_key] = $key_matches[1];
+
+            preg_match('/data-value="(.+?)"/', $streaming_page, $data_matches);
+            $encrypted_data = $data_matches[1];
+
+            $decrypted_component = $this->aesDecrypt($encrypted_data, $encryption_key, $iv);
+
+            $encrypted_id = $this->aesEncrypt($content_id, $encryption_key, $iv);
+
+            $component = $decrypted_component . "&id=" . $encrypted_id . "&alias=" . $content_id;
+
+            [, $component] = explode('&', $component, 2);
+
+            $ajax_response = $this->client->get($next_host . "encrypt-ajax.php?" . $component, [
+                'headers' => ['x-requested-with' => 'XMLHttpRequest']
+            ]);
+
+            $encrypted_content = json_decode($ajax_response->getBody()->getContents(), true);
+            $content = json_decode($this->aesDecrypt($encrypted_content['data'], $decryption_key, $iv), true);
+
+            $sources = array_merge($content['source'], $content['source_bk']);
+
+            if (!empty($sources)) {
+                return $sources[0]['file'];
+            }
+
+            return null;
+
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+}
