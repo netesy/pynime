@@ -1,9 +1,7 @@
+import re
 import json
-import time
-import certifi
 import requests
 
-from datetime import timedelta
 from datetime import datetime
 from collections import defaultdict
 
@@ -66,11 +64,8 @@ class GetSchedule:
 		data = {} # Empty dict for storing temp data
 
 		query = self.gql
-
-		current_time = datetime.fromtimestamp(unix_time)
-		week_start = current_time - timedelta(days=current_time.weekday() % 7) # get first day on current week
-		week_start = int(time.mktime(week_start.timetuple())) # and convert it to unix time
-		week_end = week_start + 24 * 7 * 60 * 60 # get unix date to weekend
+		week_start = unix_time	# current date
+		week_end = unix_time + 24 * 7 * 60 * 60 # date for 7 days from today
 
 		# Getting JSON data from Anilis GraphQL API
 		while data.get("pageInfo", {}).get("hasNextPage", True): # Loop until there is no more anime schedule on the API return
@@ -83,8 +78,7 @@ class GetSchedule:
 						"weekEnd": week_end,
 						"page": page
 					}
-				},
-				verify=certifi.where()
+				}
 			)
 
 			data = schedule_data.json().get("data", {}).get("Page", {})
@@ -96,7 +90,7 @@ class GetSchedule:
 	def print_schedule(self, unix_time: int):
 		for date_format, child_component in self.arrange_template(list(self.iter_schedule(unix_time))).items():
 			print(f"{bcolors.HEADER}[>] On {date_format} {bcolors.ENDC}") # Print date and days
-			
+
 			# Code below for prints airing time and title of anime airing that time
 			for (time_format, _), anime_component in sorted(
 				child_component.items(),key = lambda component: component[0][1], reverse = False):

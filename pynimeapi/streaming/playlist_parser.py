@@ -1,6 +1,7 @@
 import re
 import os
 import m3u8
+import requests
 
 from urllib.parse import urlparse
 
