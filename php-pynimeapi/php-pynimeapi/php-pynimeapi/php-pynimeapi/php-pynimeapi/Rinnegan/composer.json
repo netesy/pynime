@@ -1,6 +1,6 @@
 {
-    "name": "dev-jules/php-pynimeapi",
-    "description": "A PHP library to scrape GoGoAnime, converted from pynimeapi.",
+    "name": "dev-jules/rinnegan",
+    "description": "A PHP library to scrape GoGoAnime.",
     "type": "library",
     "require": {
         "php": ">=7.4",
@@ -9,7 +9,7 @@
     },
     "autoload": {
         "psr-4": {
-            "PyNime\\": "src/"
+            "Rinnegan\\": "src/"
         }
     }
 }

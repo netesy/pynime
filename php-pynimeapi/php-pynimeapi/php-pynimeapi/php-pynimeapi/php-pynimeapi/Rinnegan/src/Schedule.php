@@ -1,7 +1,6 @@
 <?php
-namespace PyNime;
-use GuzzleHttp\Client;
-use GuzzleHttp\Exception\GuzzleException;
+namespace Rinnegan;
+use GuzzleHttp\Client; use GuzzleHttp\Exception\GuzzleException;
 class Schedule {
     private string $url="https://graphql.anilist.co"; private string $gql; private Client $client;
     public function __construct() {
@@ -15,8 +14,12 @@ GQL;
         do {
             try {
                 $response=$this->client->post($this->url,['json'=>['query'=>$this->gql,'variables'=>['weekStart'=>$week_start,'weekEnd'=>$week_end,'page'=>$page,],],]);
-                $data=json_decode($response->getBody()->getContents(),true); $page_data=$data['data']['Page']; $schedules=$page_data['airingSchedules'];
-                $all_schedules=array_merge($all_schedules,$schedules); $has_next_page=$page_data['pageInfo']['hasNextPage']; $page++;
+                $data=json_decode($response->getBody()->getContents(),true);
+                if (empty($data['data']['Page'])) { $has_next_page = false; continue; }
+                $page_data=$data['data']['Page']; $schedules=$page_data['airingSchedules'];
+                $all_schedules=array_merge($all_schedules,$schedules);
+                $has_next_page=$page_data['pageInfo']['hasNextPage'];
+                $page++;
             } catch (GuzzleException $e) { return []; }
         } while ($has_next_page);
         return $all_schedules;

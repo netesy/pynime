@@ -1,5 +1,5 @@
 <?php
-namespace PyNime\Classes;
+namespace Rinnegan\Classes;
 class SearchResultObj {
     public string $title, $category_url, $picture_url;
     public function __construct(string $title, string $category_url, string $picture_url) {
