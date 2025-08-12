@@ -5,10 +5,7 @@ use PyNime\Schedule; use PyNime\Streaming\StreamExtractor; use PyNime\Streaming\
 use GuzzleHttp\Client; use DiDom\Document;
 class PyNime {
     private string $baseURL; private Client $client;
-    public function __construct(string $base_url = "https://gogoanime.cl") {
-        $this->baseURL = $base_url;
-        $this->client = new Client(['headers' => ['User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36']]);
-    }
+    public function __construct(string $base_url = "https://gogoanime.cl") { $this->baseURL = $base_url; $this->client = new Client(); }
     public function version(): string { return "0.1.55-php"; }
     public function search_anime(string $anime_title): ?array {
         $anime_result = [];
