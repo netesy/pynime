@@ -1,5 +1,5 @@
 <?php
-namespace PyNime\Streaming;
+namespace Rinnegan\Streaming;
 use GuzzleHttp\Client;
 class PlaylistParser {
     private Client $client;

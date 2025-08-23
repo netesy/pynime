@@ -1,5 +1,5 @@
 <?php
-namespace PyNime\Classes;
+namespace Rinnegan\Classes;
 class RecentAnimeObj {
     public string $title, $latest_episode_url, $picture_url;
     public int $latest_episode;

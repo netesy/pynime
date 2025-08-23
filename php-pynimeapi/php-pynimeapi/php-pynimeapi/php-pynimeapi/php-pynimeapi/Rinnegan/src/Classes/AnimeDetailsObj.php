@@ -1,5 +1,5 @@
 <?php
-namespace PyNime\Classes;
+namespace Rinnegan\Classes;
 class AnimeDetailsObj {
     public string $title, $season, $synopsis, $released, $status, $image_url;
     public array $genres;

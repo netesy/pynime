@@ -1,15 +1,15 @@
 <?php
-namespace PyNime;
-use PyNime\Classes\SearchResultObj; use PyNime\Classes\AnimeDetailsObj; use PyNime\Classes\RecentAnimeObj;
-use PyNime\Schedule; use PyNime\Streaming\StreamExtractor; use PyNime\Streaming\PlaylistParser;
+namespace Rinnegan;
+use Rinnegan\Classes\SearchResultObj; use Rinnegan\Classes\AnimeDetailsObj; use Rinnegan\Classes\RecentAnimeObj;
+use Rinnegan\Schedule; use Rinnegan\Streaming\StreamExtractor; use Rinnegan\Streaming\PlaylistParser;
 use GuzzleHttp\Client; use DiDom\Document;
-class PyNime {
+class Rinnegan {
     private string $baseURL; private Client $client;
     public function __construct(string $base_url = "https://gogoanime.cl") {
         $this->baseURL = $base_url;
         $this->client = new Client(['headers' => ['User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36']]);
     }
-    public function version(): string { return "0.1.55-php"; }
+    public function version(): string { return "1.0.0-rinnegan"; }
     public function search_anime(string $anime_title): ?array {
         $anime_result = [];
         try {
@@ -21,7 +21,7 @@ class PyNime {
                 $parent_div = $item->parent(); $picture_div = $parent_div->previousSibling();
                 $style = $picture_div->getAttribute('style'); preg_match('/url\(\'(.*?)\'\)/', $style, $matches);
                 $picture_url = $matches[1] ?? '';
-                $anime_result[] = new SearchResultObj($title, $category_url, $picture_url);
+                $anime_result[] = new Classes\SearchResultObj($title, $category_url, $picture_url);
             } return $anime_result;
         } catch (\Exception $e) { return null; }
     }
@@ -34,7 +34,7 @@ class PyNime {
             $season = str_replace('Type: ', '', trim($other_info[0]->text())); $synopsis = trim($other_info[1]->text());
             $genres = []; foreach ($other_info[2]->find('a') as $genre_link) { $genres[] = $genre_link->getAttribute('title'); }
             $released = str_replace('Released: ', '', trim($other_info[3]->text())); $status = str_replace('Status: ', '', trim($other_info[4]->text()));
-            return new AnimeDetailsObj($title, $season, $synopsis, $genres, $released, $status, $image_url);
+            return new Classes\AnimeDetailsObj($title, $season, $synopsis, $genres, $released, $status, $image_url);
         } catch (\Exception $e) { return null; }
     }
     public function get_episode_urls(string $anime_category_url): ?array {
@@ -49,8 +49,8 @@ class PyNime {
         } catch (\Exception $e) { return null; }
     }
     public function get_stream_urls(string $anime_episode_url): ?array {
-        $extractor = new StreamExtractor(); $playlist_url = $extractor->extract($anime_episode_url); if (!$playlist_url) return null;
-        $parser = new PlaylistParser(); return $parser->parse($playlist_url);
+        $extractor = new Streaming\StreamExtractor(); $playlist_url = $extractor->extract($anime_episode_url); if (!$playlist_url) return null;
+        $parser = new Streaming\PlaylistParser(); return $parser->parse($playlist_url);
     }
     public function grab_stream(string $anime_title, int $episode, int $resolution = 1080): ?string {
         $search_result = $this->search_anime($anime_title); if (empty($search_result)) return null;
@@ -84,7 +84,7 @@ class PyNime {
             preg_match_all($regex_filter, $html, $matches, PREG_SET_ORDER);
             $recent_release_list = [];
             foreach ($matches as $match) {
-                $recent_release_list[] = new RecentAnimeObj($match['title'], (int)$match['episode'], $this->baseURL . $match['href'], $match['img']);
+                $recent_release_list[] = new Classes\RecentAnimeObj($match['title'], (int)$match['episode'], $this->baseURL . $match['href'], $match['img']);
             } return $recent_release_list;
         } catch (\Exception $e) { return null; }
     }
