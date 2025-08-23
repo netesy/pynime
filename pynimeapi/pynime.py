@@ -3,13 +3,11 @@ import os
 import m3u8
 import time
 import shutil
-import certifi
 import requests
 
 import concurrent.futures
 
 from bs4 import BeautifulSoup
-from urllib.parse import urlparse
 
 from pynimeapi.classes.datatype import *
 from pynimeapi.schedule import GetSchedule
@@ -19,11 +17,11 @@ from pynimeapi.downloader.http_downloader import HTTPDownloader
 
 
 class PyNime:
-    def __init__(self, base_url: str = "https://anitaku.to"):
+    def __init__(self, base_url: str = "https://gogoanime.cl"):
         self.baseURL = base_url  # domain of GoGoAnime. please update regularly
 
     def version(self):
-        return "0.1.61"
+        return "0.1.55"
 
     def search_anime(self, anime_title: str) -> SearchResultObj:
         """
@@ -32,7 +30,7 @@ class PyNime:
         """
         try:
             anime_result = []
-            r = requests.get(f"https://ajax.gogocdn.net/site/loadAjaxSearch?keyword={anime_title}")
+            r = requests.get(f"https://ajax.gogo-load.com/site/loadAjaxSearch?keyword={anime_title}")
 
             if r:
                 title = [_.group(1) for _ in re.finditer(r"<\\/div>(.*?)<\\/a><\\/div>", r.text)]
@@ -63,11 +61,12 @@ class PyNime:
                 .season        : season of anime aired
                 .synopsis      : plot of anime
                 .genres        : genres
+                .released      : year of released
                 .status        : status, ongoing or finished
                 .image_url     : anime cover image
         '''
         try:
-            detail_page = requests.get(anime_category_url, verify=certifi.where())
+            detail_page = requests.get(anime_category_url)
             soup = BeautifulSoup(detail_page.text, "lxml")
             info_body = soup.find("div", {"class": "anime_info_body_bg"})
             image_url = info_body.find("img")["src"]
@@ -75,19 +74,12 @@ class PyNime:
 
             title = info_body.find("h1").text.strip()
             season = other_info[0].text.replace("\n", "").replace("Type: ", "")
-
-            # find description/synopsis
-            synopsis = info_body.find("div", {"class":"description"}).text.replace("\n","").replace("\r","")
-
-            # look for genres
-            genres = [] # empty list
-            pattern_genres = re.compile(r'Genre:\s*(.*)$')
-            match_genres = pattern_genres.search(other_info[2].text.replace("\n", ""))
-
-            if match_genres:
-                genres = match_genres.group(1).split(', ')
-            genres = ', '.join(genres)
-
+            synopsis = other_info[1].text.replace("\n", "")
+            genres = [
+                x["title"]
+                for x in BeautifulSoup(str(other_info[2]), "lxml").find_all("a")
+            ]
+            released = other_info[3].text.replace("Released: ", "")
             status = other_info[4].text.replace("\n", "").replace("Status: ", "")
             image_url = image_url
 
@@ -95,8 +87,9 @@ class PyNime:
                 title=title,
                 season=season,
                 synopsis=synopsis,
-                status=status,
                 genres=genres,
+                released=released,
+                status=status,
                 image_url=image_url
             )
 
@@ -112,10 +105,10 @@ class PyNime:
         try:
             eps_list = list()  # an empty list for storing links
 
-            r = requests.get(anime_category_url, verify=certifi.where())
+            r = requests.get(anime_category_url)
             anime_id = re.search(r'<input.+?value="(\d+)" id="movie_id"', r.text).group(1)
 
-            res = requests.get("https://ajax.gogocdn.net/ajax/load-list-episode",
+            res = requests.get("https://ajax.gogo-load.com/ajax/load-list-episode",
                                params={"ep_start": 0, "ep_end": 9999, "id": anime_id}, )
 
             soup = BeautifulSoup(res.content, "lxml")
@@ -189,21 +182,10 @@ class PyNime:
         downloader = HTTPDownloader()
         playlist = m3u8.load(stream_url)
 
-        stream_url_parsed = urlparse(stream_url)
-        base_stream_url = f"{stream_url_parsed.scheme}://{stream_url_parsed.netloc}{os.path.split(stream_url_parsed.path)[0]}"
-
-        # check if HLS file contains ts file.
-        ts_name, ts_extension = os.path.splitext(playlist.segments[0].uri)
-        if ts_extension == ".ts":
-            # continue
-            pass
-        else:
-            return None
-
         # create list to store video urls
         playlist_segments = list()
         for url in playlist.segments:
-            playlist_segments.append(base_stream_url + "/" + url.uri)
+            playlist_segments.append(url.uri)
 
         filename = f"{filename}.ts"  # file will be saved as ts file
 
@@ -268,7 +250,7 @@ class PyNime:
         try:
             recent_release_list = list()
             response = requests.get(
-                f"https://ajax.gogocdn.net/ajax/page-recent-release.html?page={page}", verify=certifi.where()).text
+                f"https://ajax.gogo-load.com/ajax/page-recent-release.html?page={page}").text
 
             regex_filter = r"<li>\s*\n.*\n.*<a\shref=[\"'](?P<href>.*?-episode-(?P<episode>\d+))[\"']\s*title=[\"'](?P<title>.*?)[\"']>\n.*<img\ssrc=[\"'](?P<img>.*?)[\"']"
 
